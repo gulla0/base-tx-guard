@@ -3,11 +3,11 @@ import { useWallet } from '@/hooks/useWallet';
 import { runPreflight } from '@/lib/preflight';
 import { PreflightResults } from './PreflightResults';
 import { PreflightResult } from '@/types';
-import { parseUnits, encodeFunctionData, isAddress, type Address, type GetEnsAddressReturnType } from 'viem';
+import { parseUnits, encodeFunctionData, isAddress, type Address } from 'viem';
 import { normalize } from 'viem/ens';
 import { USDC_ADDRESS, ERC20_ABI } from '@/lib/constants';
 import { incrementPrevented, incrementSuccessful } from '@/lib/stats';
-import { Shield, ExternalLink, Loader2, User, FileCode, ArrowDown, History, CheckCircle2 } from 'lucide-react';
+import { Shield, ExternalLink, Loader2, User, FileCode, History, CheckCircle2 } from 'lucide-react';
 
 interface RecentRecipient {
     display: string;
@@ -16,7 +16,7 @@ interface RecentRecipient {
 }
 
 export function TransactionBuilder() {
-    const { address, publicClient, walletClient } = useWallet();
+    const { address, publicClient, mainnetPublicClient, walletClient } = useWallet();
 
     // State
     const [inputValue, setInputValue] = useState(''); // What the user types
@@ -56,35 +56,53 @@ export function TransactionBuilder() {
 
             // ENS handling
             if (inputValue.includes('.')) {
-                if (!publicClient) return;
+                // Use Mainnet client for ENS
+                if (!mainnetPublicClient) return;
 
                 setIsResolving(true);
                 setResolutionError(null);
 
                 try {
-                    // Try to normalize, if it fails it's invalid chars
+                    // Try to normalize
                     const normalizedName = normalize(inputValue);
-                    const addr = await publicClient.getEnsAddress({
+                    const addr = await mainnetPublicClient.getEnsAddress({
                         name: normalizedName,
                     });
+
+                    // Stale check: verify input hasn't changed while we were awaiting
+                    // Note: inputRef.current.value tracks the real-time DOM value
+                    if (inputRef.current && inputRef.current.value !== inputValue) {
+                        return;
+                    }
 
                     if (addr) {
                         setResolvedAddress(addr);
                     } else {
                         setResolvedAddress(null);
-                        setResolutionError('Name could not be resolved on Base');
+                        // Suggest why it failed
+                        if (inputValue.endsWith('.eth')) {
+                            setResolutionError('Name not found on Mainnet');
+                        } else if (inputValue.endsWith('.base.eth')) {
+                            setResolutionError('Base Names via ENS not fully supported yet');
+                        } else {
+                            setResolutionError('Name resolution failed');
+                        }
                     }
                 } catch (e) {
+                    // Stale check
+                    if (inputRef.current && inputRef.current.value !== inputValue) return;
+
                     setResolvedAddress(null);
-                    // Don't show error while typing incomplete names unless it looks like a full attempt
                     if (inputValue.endsWith('.eth')) {
-                        setResolutionError('Invalid credentials or name');
+                        setResolutionError('Invalid or not found');
                     }
                 } finally {
-                    setIsResolving(false);
+                    // Only turn off loading if we haven't started a new request (implicit via effect cleanup, but valid here too)
+                    if (inputRef.current && inputRef.current.value === inputValue) {
+                        setIsResolving(false);
+                    }
                 }
             } else {
-                // Not an address and not looked like a domain
                 setResolvedAddress(null);
                 setResolutionError(null);
             }
@@ -92,7 +110,7 @@ export function TransactionBuilder() {
 
         const timer = setTimeout(resolve, 500); // 500ms debounce
         return () => clearTimeout(timer);
-    }, [inputValue, publicClient]);
+    }, [inputValue, mainnetPublicClient]);
 
     // Validate recipient type (EOA vs Contract) on the RESOLVED address
     useEffect(() => {
@@ -109,7 +127,7 @@ export function TransactionBuilder() {
                 } else {
                     setRecipientType('EOA');
                 }
-            } catch (e) {
+            } catch {
                 setRecipientType(null);
             }
         };
@@ -117,6 +135,11 @@ export function TransactionBuilder() {
     }, [resolvedAddress, publicClient]);
 
     const handleSendToMyself = () => {
+        if (!address) {
+            alert("Wallet not ready yet — connect or wait a second.");
+            return;
+        }
+
         if (address) {
             setInputValue(address);
             setResolvedAddress(address);
@@ -187,7 +210,7 @@ export function TransactionBuilder() {
 
         } catch (e) {
             console.error(e);
-            alert('Error running preflight: ' + (e as any).message);
+            alert('Error running preflight: ' + (e as Error).message);
         } finally {
             setIsChecking(false);
         }
@@ -219,9 +242,9 @@ export function TransactionBuilder() {
             addToRecents(inputValue, resolvedAddress);
 
             setResult(null);
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error(e);
-            alert('Send failed: ' + e.message);
+            alert('Send failed: ' + (e instanceof Error ? e.message : 'Unknown error'));
         } finally {
             setIsSending(false);
         }
@@ -232,8 +255,6 @@ export function TransactionBuilder() {
         r.display.toLowerCase().includes(inputValue.toLowerCase()) ||
         r.address.toLowerCase().includes(inputValue.toLowerCase())
     );
-
-    const isValidHeader = inputValue && !resolvedAddress && !isResolving && !resolutionError && !inputValue.includes('.');
 
     return (
         <div className="w-full bg-white rounded-xl shadow-xl p-6 border border-gray-100" onClick={() => setShowSuggestions(false)}>
@@ -328,9 +349,9 @@ export function TransactionBuilder() {
                         </p>
                         <button
                             onClick={handleSendToMyself}
-                            className={`text-xs font-medium underline ${!address ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800'}`}
+                            type="button"
+                            className={`text-xs font-medium underline ${!address ? 'text-gray-400 hover:text-gray-600' : 'text-blue-600 hover:text-blue-800'}`}
                             title={!address ? "Connect wallet first" : "Send to your connected address"}
-                            disabled={!address}
                         >
                             [ Send to my own address ]
                         </button>

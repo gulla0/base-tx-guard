@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createPublicClient, createWalletClient, custom, http, type PublicClient, type WalletClient, type Address } from 'viem';
-import { base } from 'viem/chains';
+import { createPublicClient, createWalletClient, custom, http, type WalletClient, type Address } from 'viem';
+import { base, mainnet } from 'viem/chains';
 import { RPC_URL } from '@/lib/constants';
 
 declare global {
@@ -15,11 +15,18 @@ const publicClient = createPublicClient({
     transport: http(RPC_URL),
 });
 
+// Global mainnet public client for ENS
+export const mainnetPublicClient = createPublicClient({
+    chain: mainnet,
+    transport: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || 'https://eth.merkle.io'),
+});
+
 interface UseWalletReturn {
     address: Address | null;
     isConnected: boolean;
     chainId: number | null;
     publicClient: typeof publicClient;
+    mainnetPublicClient: typeof mainnetPublicClient;
     walletClient: WalletClient | null;
     error: string | null;
     connect: () => Promise<void>;
@@ -63,9 +70,9 @@ export function useWallet(): UseWalletReturn {
             setAddress(account);
             setWalletClient(client);
             setChainId(base.id);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err.message || 'Failed to connect');
+            setError((err as Error).message || 'Failed to connect');
         }
     }, []);
 
@@ -104,6 +111,7 @@ export function useWallet(): UseWalletReturn {
         isConnected: !!address,
         chainId,
         publicClient,
+        mainnetPublicClient,
         walletClient,
         error,
         connect,
