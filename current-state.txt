@@ -1,0 +1,53 @@
+# Current State of Base Tx Guard
+
+## Overview
+**Base Tx Guard** is a Next.js Mini App designed for secure USDC transfers on the Base network. Its primary goal is to protect users by running "preflight checks" (simulations and validations) before any transaction is signed and broadcasted.
+
+## Tech Stack
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS 4
+- **Blockchain Interface**: Viem (v2.43.1)
+- **Network**: Base Mainnet (Chain ID: 8453)
+- **Icons**: Lucide React
+
+## Core Architecture
+
+### 1. Frontend & Components
+- **`app/page.tsx`**: The main entry point. It displays a real-time "Stats" dashboard (Prevented vs Successful transactions) and the main `TransactionBuilder` flow.
+- **`components/ConnectWallet.tsx`**: Manages the connection to the user's wallet (optimized for Coinbase Wallet). Uses a custom hook for state.
+- **`components/TransactionBuilder.tsx`**: The heart of the UI. It takes user input (Recipient, Amount), builds the USDC `transfer` transaction data, and triggers the preflight check. It only allows sending if the preflight passes.
+- **`components/PreflightResults.tsx`**: Renders the outcome of the simulation. It groups issues by severity (`blocking` vs `warning`). If blocking issues exist, the "Send" button is disabled.
+
+### 2. Logic & Hooks
+- **`hooks/useWallet.ts`**: A custom hook encapsulating `viem`'s `WalletClient`. It handles:
+    - Wallet connection/disconnection.
+    - Account changes (`accountsChanged`).
+    - Chain switching (ensures the user is on Base).
+- **`lib/preflight.ts`**: Contains the `runPreflight` engine. It performs:
+    - **Recipient Validation**: Checks if the address is a valid hex address.
+    - **ETH Balance Check**: Validates if the user has enough ETH for gas (blocking if < 0.00001 ETH, warning if < 0.00005 ETH).
+    - **USDC Balance Check**: Ensures the user has enough USDC to cover the transfer amount.
+    - **Transaction Simulation (`eth_call`)**: Executes the transaction against the current blockchain state to detect potential reverts.
+    - **Gas Estimation**: Calculates the estimated gas limit with a 20% safety buffer.
+- **`lib/stats.ts`**: Utilities for tracking app performance (stored in `localStorage`).
+- **`lib/constants.ts`**: Centralized configuration for the USDC contract address (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`), RPC URL, and ERC20 ABI.
+
+### 3. Data Structures (`types/index.ts`)
+- **`PreflightIssue`**: Defines an issue with a type (`address`, `gas`, `balance`, `revert`), severity, and message.
+- **`PreflightResult`**: Summary of the simulation, including a `willSucceed` boolean, an array of issues, and a confidence score.
+
+## Current Functionality
+1. **Wallet Connection**: Users can connect via Coinbase Wallet (EIP-1193).
+2. **USDC Transfer Building**: Users enter a recipient and a USDC amount.
+3. **Simulation Feedback**: 
+   - Before sending, the app runs a full simulation.
+   - It reports if the transaction is likely to succeed or fail.
+   - It provides specific reasons for failures (e.g., "Insufficient USDC", "Simulation failed: Reverted").
+4. **Execution**: If preflight passes, the user can sign and send the transaction.
+5. **Post-Tx Tracking**: Displays the Tx Hash with a direct link to Basescan and increments the "Successful Txs" counter.
+
+## Development Status
+- **Phase**: MVP (Phase 0)
+- **Environment**: Mainnet Only
+- **Constraints**: Currently hardcoded for USDC on Base.
