@@ -82,7 +82,12 @@ export function useWallet(): UseWalletReturn {
         };
 
         const handleChainChanged = (_chainId: string) => {
-            window.location.reload();
+            // Convert hex chainId to number and update state
+            const newChainId = parseInt(_chainId, 16);
+            setChainId(newChainId);
+
+            // If chain is wrong, error might be needed, but for now just updating state is enough
+            // The ConnectWallet component can show a "Wrong Network" UI if chainId != base.id
         };
 
         window.ethereum.on('accountsChanged', handleAccountsChanged);

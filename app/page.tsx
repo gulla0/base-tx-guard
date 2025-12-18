@@ -26,7 +26,7 @@ export default function Home() {
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-extrabold text-blue-600 tracking-tight">Base Tx Guard</h1>
-          <p className="text-gray-500">Secure USDC transfers with preflight checks.</p>
+          <p className="text-gray-500">We simulate your transaction before you sign — so you don’t waste gas or lose funds.</p>
         </div>
 
         {/* Stats */}
@@ -52,8 +52,21 @@ export default function Home() {
           )}
         </div>
 
-        <div className="text-center">
-          <p className="text-xs text-gray-400">Phase 0 MVP • Mainnet Only</p>
+        {/* Trust Builders */}
+        <div className="text-center space-y-4">
+          <p className="text-sm text-gray-400 font-medium">
+            No fees • No backend • Runs entirely in your browser
+          </p>
+
+          <details className="group cursor-pointer">
+            <summary className="text-xs text-blue-600 hover:text-blue-700 font-medium list-none flex items-center justify-center gap-1">
+              <span>What is this?</span>
+              <span className="transition-transform group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-2 text-xs text-gray-500 max-w-xs mx-auto bg-white p-3 rounded-lg shadow-sm border">
+              Most wallets only tell you after a transaction fails. Tx Guard simulates it first to save you money and frustration.
+            </div>
+          </details>
         </div>
 
       </div>
