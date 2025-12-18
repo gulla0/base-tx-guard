@@ -277,7 +277,7 @@ export function TransactionBuilder() {
                             onFocus={() => {
                                 if (recentRecipients.length > 0) setShowSuggestions(true);
                             }}
-                            className={`w-full p-3 border rounded-lg outline-none transition font-mono text-sm ${resolutionError ? 'border-red-300 focus:ring-2 focus:ring-red-200' : 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                            className={`w-full p-3 border rounded-lg outline-none transition font-mono text-sm text-gray-900 placeholder-gray-400 bg-white ${resolutionError ? 'border-red-300 focus:ring-2 focus:ring-red-200' : 'focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
                                 }`}
                         />
 
@@ -345,7 +345,7 @@ export function TransactionBuilder() {
                         placeholder="0.00"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition font-mono"
+                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition font-mono text-gray-900 placeholder-gray-400 bg-white"
                     />
                 </div>
 
